@@ -1,5 +1,1 @@
-CREATE TABLE `Location` (
-	`id`	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-	`name`	TEXT NOT NULL,
-	`address`	TEXT NOT NULL
-);
+select * FROM Anima
