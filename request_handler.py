@@ -2,7 +2,7 @@ import json
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from animals import get_all_animals, get_single_animal, create_animal, delete_animal, update_animal
 from locations import get_all_locations, get_single_location, create_location, delete_location, update_location
-from customers import get_all_customers, get_single_customer, create_customer, delete_customer, update_customer
+from customers import get_all_customers, get_single_customer, create_customer, delete_customer, update_customer, get_customers_by_email
 from employees import get_all_employees, get_single_employee, create_employee, delete_employee, update_employee
 
 
@@ -16,17 +16,30 @@ class HandleRequests(BaseHTTPRequestHandler):
         # at index 2.
         path_params = path.split("/")
         resource = path_params[1]
-        id = None
+    
+        if "?" in resource:
+        # GIVEN: /customers?email=jenna@solis.com
 
-        # Try to get the item at index 2
-        try:
-            id = int(path_params[2])
-        except IndexError:
-            pass  # No route parameter exists: /animals
-        except ValueError:
-            pass  # Request had trailing slash: /animals/
+            param = resource.split("?")[1]  # email=jenna@solis.com
+            resource = resource.split("?")[0]  # 'customers'
+            pair = param.split("=")  # [ 'email', 'jenna@solis.com' ]
+            key = pair[0]  # 'email'
+            value = pair[1]  # 'jenna@solis.com'
 
-        return (resource, id)  # This is a tuple
+            return ( resource, key, value )
+        # No query string parameter
+        else:
+            id = None
+
+            # Try to get the item at index 2
+            try:
+                id = int(path_params[2])
+            except IndexError:
+                pass  # No route parameter exists: /animals
+            except ValueError:
+                pass  # Request had trailing slash: /animals/
+
+            return (resource, id)  # This is a tuple
 
     # Here's a class function
     def _set_headers(self, status):
@@ -37,7 +50,7 @@ class HandleRequests(BaseHTTPRequestHandler):
 
     # Here's a method on the class that overrides the parent's method.
     # It handles any GET request.
-    def do_GET(self):
+    def do_GET1(self):
         # Set the response code to 'Ok'
         self._set_headers(200)
 
@@ -48,12 +61,12 @@ class HandleRequests(BaseHTTPRequestHandler):
         (resource, id) = self.parse_url(self.path)
 
         # It's an if..else statement
-        if resource == "animals":
+        if resource == "animals1":
             if id is not None:
                 response = f"{get_single_animal(id)}"
             else:
                 response = f"{get_all_animals()}"
-        elif resource == "locations":
+        elif resource == "locations1":
             if id is not None:
                 response = f"{get_single_location(id)}"
             else:
@@ -63,7 +76,7 @@ class HandleRequests(BaseHTTPRequestHandler):
                 response = f"{get_single_employee(id)}"
             else:
                 response = f"{get_all_employees()}"                
-        elif self.path == "/customers":
+        elif self.path == "/customers1":
             response = get_all_customers()
         else:
             response = []
@@ -71,40 +84,85 @@ class HandleRequests(BaseHTTPRequestHandler):
         # This weird code sends a response back to the client
         self.wfile.write(f"{response}".encode())
 
-    # Here's a method on the class that overrides the parent's method.
-    # It handles any POST request.
-    def do_POST(self):
-        self._set_headers(201)
-        content_len = int(self.headers.get('content-length', 0))
-        post_body = self.rfile.read(content_len)
+    def do_GET(self):
+        self._set_headers(200)
 
-        # Convert JSON string to a Python dictionary
-        post_body = json.loads(post_body)
+        response = {}
 
-        # Parse the URL
-        (resource, _id) = self.parse_url(self.path)
+        # Parse URL and store entire tuple in a variable
+        parsed = self.parse_url(self.path)
 
-        # Initialize new animal
-        new_animal = None
-        # Initialize new animal
-        new_object = None
+        # Response from parse_url() is a tuple with 2
+        # items in it, which means the request was for
+        # `/animals` or `/animals/2`
+        if len(parsed) == 2:
+            ( resource, id ) = parsed
 
-        # Add a new animal to the list. Don't worry about
-        # the orange squiggle, you'll define the create_animal
-        # function next.
-        if resource == "animals":
-            new_animal = create_animal(post_body)
-            # Encode the new animal and send in response
-            self.wfile.write(f"{new_animal}".encode())
-        elif resource == "locations":
-            new_object = create_location(post_body)
-            self.wfile.write(f"{new_object}".encode())
-        elif resource == "employees":
-            new_object = create_employee(post_body)
-            self.wfile.write(f"{new_object}".encode())
-        elif resource == "customers":
-            new_object = create_customer(post_body)
-            self.wfile.write(f"{new_object}".encode())            
+            if resource == "animals":
+                if id is not None:
+                    response = f"{get_single_animal(id)}"
+                else:
+                    response = f"{get_all_animals()}"
+            elif resource == "customers":
+                if id is not None:
+                    response = f"{get_single_customer(id)}"
+                else:
+                    response = f"{get_all_customers()}"
+            elif resource == "locations":
+                if id is not None:
+                    response = f"{get_single_location(id)}"
+                else:
+                    response = f"{get_all_locations()}"                    
+
+        # Response from parse_url() is a tuple with 3
+        # items in it, which means the request was for
+        # `/resource?parameter=value`
+        elif len(parsed) == 3:
+            ( resource, key, value ) = parsed
+
+            # Is the resource `customers` and was there a
+            # query parameter that specified the customer
+            # email as a filtering value?
+            if key == "email" and resource == "customers":
+                response = get_customers_by_email(value)
+
+        self.wfile.write(response.encode())
+
+
+        # Here's a method on the class that overrides the parent's method.
+        # It handles any POST request.
+        def do_POST(self):
+            self._set_headers(201)
+            content_len = int(self.headers.get('content-length', 0))
+            post_body = self.rfile.read(content_len)
+
+            # Convert JSON string to a Python dictionary
+            post_body = json.loads(post_body)
+
+            # Parse the URL
+            (resource, _id) = self.parse_url(self.path)
+
+            # Initialize new animal
+            new_animal = None
+            # Initialize new animal
+            new_object = None
+
+            # Add a new animal to the list. Don't worry about
+            # the orange squiggle, you'll define the create_animal
+            # function next.
+            if resource == "animals":
+                new_animal = create_animal(post_body)
+                # Encode the new animal and send in response
+                self.wfile.write(f"{new_animal}".encode())
+            elif resource == "locations":
+                new_object = create_location(post_body)
+                self.wfile.write(f"{new_object}".encode())
+            elif resource == "employees":
+                new_object = create_employee(post_body)
+                self.wfile.write(f"{new_object}".encode())
+            elif resource == "customers":
+                new_object = create_customer(post_body)
+                self.wfile.write(f"{new_object}".encode())            
 
     def do_DELETE(self):
         # Set a 204 response code
@@ -160,3 +218,6 @@ def main():
     host = ''
     port = 8088
     HTTPServer((host, port), HandleRequests).serve_forever()
+
+if __name__ == "__main__":
+    main()

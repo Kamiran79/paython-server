@@ -1,6 +1,6 @@
-from models.animal import Animal
 import sqlite3
 import json
+from models.animal import Animal
 
 ANIMALS1 = [Animal(1, "Snickers", "Dog", "Recreation", 1, 4),
     Animal(2, "Bob", "Bird", "Recreation", 3, 4)
@@ -37,19 +37,49 @@ ANIMALS = [
 #    return ANIMALS1
 
 # Function with a single parameter
-def get_single_animal(id):
+
+# def get_single_animal(id):
     # Variable to hold the found animal, if it exists
-    requested_animal = None
+#    requested_animal = None
 
     # Iterate the ANIMALS list above. Very similar to the
     # for..of loops you used in JavaScript.
-    for animal in ANIMALS1:
+#    for animal in ANIMALS1:
         # Dictionaries in Python use [] notation to find a key
         # instead of the dot notation that JavaScript used.
-        if animal.id == id:
-            requested_animal = animal
+#        if animal.id == id:
+#            requested_animal = animal
 
-    return requested_animal
+#    return requested_animal
+def get_single_animal(id):
+    with sqlite3.connect("./kennel.db") as conn:
+        conn.row_factory = sqlite3.Row
+        db_cursor = conn.cursor()
+
+        # Use a ? parameter to inject a variable's value
+        # into the SQL statement.
+        db_cursor.execute("""
+        SELECT
+            a.id,
+            a.name,
+            a.breed,
+            a.status,
+            a.customer_id,
+            a.location_id
+        FROM animal a
+        WHERE a.id = ?
+        """, ( id, ))
+
+        # Load the single result into memory
+        data = db_cursor.fetchone()
+
+        # Create an animal instance from the current row
+        animal = Animal(data['name'], data['breed'], data['status'],
+                        data['location_id'], data['customer_id'],
+                        data['id'])
+
+        return json.dumps(animal.__dict__)
+
 
 def create_animal(animal):
     # Get the id value of the last animal in the list
