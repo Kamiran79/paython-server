@@ -112,7 +112,12 @@ class HandleRequests(BaseHTTPRequestHandler):
                 if id is not None:
                     response = f"{get_single_location(id)}"
                 else:
-                    response = f"{get_all_locations()}"                    
+                    response = f"{get_all_locations()}"
+            elif resource == "employees":
+                if id is not None:
+                    response = f"{get_single_employee(id)}"
+                else:
+                    response = f"{get_all_employees()}"                                           
 
         # Response from parse_url() is a tuple with 3
         # items in it, which means the request was for
